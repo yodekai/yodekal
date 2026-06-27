@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d1018">
+<title>VaultZone</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;touch-action:none}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d1018;font-family:'Courier New',monospace;-webkit-user-select:none;user-select:none;color:#c0c8d8}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#2a2c34;border-radius:2px}
+
+.screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0d1018;z-index:200;padding:16px;gap:10px;overflow-y:auto}
+.screen.active{display:flex}
+
+/* ── LOGIN ── */
+.logo{font-size:clamp(34px,9vw,56px);color:#ffe060;letter-spacing:.2em;text-shadow:0 0 24px #ffe06088,0 0 48px #ff408055;text-align:center}
+.logo-sub{font-size:10px;color:#7a8090;letter-spacing:.26em;margin-bottom:6px}
+
+.login-card{display:flex;flex-direction:column;gap:14px;width:min(420px,92vw);background:#141822;border:1px solid #2a3040;border-radius:6px;padding:20px}
+.tabs{display:flex;gap:0;border-bottom:1px solid #2a3040}
+.tab{flex:1;text-align:center;padding:10px;font-size:9px;color:#7a8090;cursor:pointer;letter-spacing:.14em;border-bottom:2px solid transparent}
+.tab.active{color:#ffe060;border-bottom-color:#ffe060}
+.tab-content{display:none;flex-direction:column;gap:10px}
+.tab-content.active{display:flex}
+.field-label{font-size:8px;color:#7a8090;letter-spacing:.14em}
+.ni{background:#0e131c;border:1px solid #2a3040;color:#d8dce8;font:13px 'Courier New';padding:10px 13px;width:100%;outline:none;border-radius:3px;-webkit-appearance:none}
+.ni:focus{border-color:#5a90d0}
+.note{font-size:8px;color:#5a6470;line-height:1.5;font-style:italic}
+.btn-primary{background:#1a2030;border:1px solid #ffe060;color:#ffe060;font:12px 'Courier New';padding:12px 0;cursor:pointer;letter-spacing:.18em;border-radius:3px}
+.btn-primary:hover{background:#242c40;box-shadow:0 0 16px #ffe06030}
+.btn-guest{background:transparent;border:1px solid #3a4458;color:#8a90a0;font:10px 'Courier New';padding:10px 0;cursor:pointer;letter-spacing:.14em;border-radius:3px}
+.btn-guest:hover{border-color:#5a6478;color:#aab4c8}
+.err-msg{font-size:9px;color:#e08060;min-height:12px}
+
+/* ── CHARACTER CREATE (combined into login-signup) ── */
+.cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cc-section{display:flex;flex-direction:column;gap:5px}
+.swatches{display:flex;flex-wrap:wrap;gap:4px}
+.swatch{width:20px;height:20px;border-radius:3px;cursor:pointer;border:2px solid transparent}
+.swatch.sel{border-color:#ffe060;box-shadow:0 0 6px #ffe06070}
+.cc-preview{display:flex;flex-direction:column;align-items:center;gap:6px;grid-column:1/-1}
+#preview-canvas{border:1px solid #2a3040;background:#0e131c;border-radius:3px}
+
+/* ── GAME ── */
+#game-screen{display:none;position:fixed;inset:0;flex-direction:column}
+#game-screen.active{display:flex}
+
+#topbar{height:34px;background:rgba(14,20,30,.98);border-bottom:1px solid #1a2030;display:flex;align-items:center;padding:0 8px;gap:6px;flex-shrink:0;z-index:50;flex-wrap:wrap}
+.tb-name{font-size:9px;color:#c0c8d8;letter-spacing:.1em;white-space:nowrap}
+.tb-coins{font-size:9px;color:#ffd040;letter-spacing:.08em;background:rgba(40,32,8,.5);border:1px solid #4a3818;padding:2px 7px;border-radius:2px}
+.tb-coins::before{content:'⌬ '}
+.tb-squad{font-size:8px;color:#80c0ff;background:rgba(20,36,52,.5);border:1px solid #2a4a66;padding:2px 6px;border-radius:2px}
+.tb-badge{font-size:7px;color:#8a90a0;background:#141822;border:1px solid #2a3240;padding:3px 7px;border-radius:2px;cursor:pointer;letter-spacing:.08em}
+.tb-badge:hover{border-color:#4a5468;color:#c0c8d8}
+.tb-sep{width:1px;height:14px;background:#1a2030;margin:0 2px}
+#tb-zone{font-size:8px;color:#80b0d0;letter-spacing:.12em;font-weight:bold}
+#tb-players{font-size:7px;color:#6a7488;margin-left:auto}
+.tb-ico{cursor:pointer;padding:3px 7px;border:1px solid #2a3240;border-radius:2px;font-size:8px;color:#8a94a8;pointer-events:all;letter-spacing:.08em}
+.tb-ico:hover{border-color:#4a5468;color:#c0c8d8}
+.tb-ico.alert{border-color:#c0a030;color:#ffd040}
+
+#canvas-wrap{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#0d1018}
+#gc{display:block;image-rendering:pixelated;cursor:none}
+
+/* ── Match HUD ── */
+#match-hud{position:absolute;top:6px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:2px;pointer-events:none;z-index:20;background:rgba(10,14,22,.7);padding:4px 14px;border-radius:4px;border:1px solid #1e2838}
+#match-title{font-size:7px;color:#80b0d0;letter-spacing:.16em}
+#match-row{display:flex;align-items:center;gap:10px}
+.mh-side{display:flex;flex-direction:column;align-items:center;gap:1px}
+.mh-name{font-size:8px;color:#aab0c0}
+.mh-hp{width:80px;height:3px;background:#161820;border:1px solid #2a3240;border-radius:1px;overflow:hidden}
+.mh-hp .f{height:100%;transition:width .08s}
+#mh-timer{font-size:9px;color:#aab0c0;letter-spacing:.12em}
+#mh-timer.danger{color:#e04040}
+
+/* Fighter HUD */
+#fighter-hud{position:absolute;bottom:8px;left:8px;display:none;flex-direction:column;gap:3px;pointer-events:none;z-index:20}
+.fh-row{display:flex;align-items:center;gap:6px}
+.fh-bar{height:4px;border-radius:1px;overflow:hidden;background:#161820;border:1px solid #2a3240}
+#fh-hpbar{width:90px}#fh-hpfill{background:#7a2828;width:100%;height:100%}
+.fh-label{font-size:7px;color:#6a7080;letter-spacing:.1em;text-transform:uppercase}
+.fh-weapon{font-size:8px;color:#d8c050;background:rgba(28,32,12,.7);border:1px solid #4a3818;padding:2px 6px;border-radius:2px}
+.fh-ammo{font-size:9px;color:#9ac860}
+.fh-streak{font-size:8px;color:#d8b030;background:rgba(38,34,8,.6);border:1px solid #4a3410;padding:2px 6px;border-radius:2px}
+
+/* Weapon selector (always visible when in any zone, shows hotkeys) */
+#weapon-selector{position:absolute;bottom:8px;right:8px;display:flex;flex-direction:column;gap:3px;pointer-events:all;z-index:20}
+.ws-btn{background:rgba(20,26,36,.92);border:1px solid #2a3240;color:#8a90a0;font:8px 'Courier New';padding:6px 9px;border-radius:2px;cursor:pointer;letter-spacing:.04em;text-align:left;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.ws-btn .key{background:#1a2030;color:#6a7080;padding:1px 4px;border-radius:1px;font-size:7px}
+.ws-btn:hover,.ws-btn.active{border-color:#5a5028;color:#e0c050;background:rgba(36,36,16,.95)}
+.ws-btn.active{border-color:#d8b030;color:#ffe060}
+.ws-btn.active .key{color:#ffe060;background:#3a3010}
+
+/* Overlays */
+#game-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:30}
+#cdnum{display:none;font-size:clamp(56px,13vw,84px);color:#ffe060;text-shadow:0 0 40px #ffe06070}
+#result-box{display:none;flex-direction:column;align-items:center;gap:8px;background:rgba(14,20,30,.97);border:1px solid #2a3040;padding:24px 38px;border-radius:6px}
+.rb-win{font-size:20px;color:#ffe060;letter-spacing:.1em}
+.rb-msg{font-size:10px;color:#8a90a0}
+.rb-reward{font-size:11px;color:#80ffa0}
+#wait-banner{display:none;font-size:11px;color:#80a0b0;letter-spacing:.16em;background:rgba(10,14,22,.7);padding:6px 14px;border-radius:3px}
+
+/* Zone prompt */
+#zone-prompt{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:all;z-index:25;background:rgba(10,14,22,.92);padding:9px 16px;border-radius:5px;border:1px solid #2a3040}
+#zp-label{font-size:9px;color:#80b0d0;letter-spacing:.12em}
+#zp-sub{font-size:7px;color:#6a7488;letter-spacing:.08em}
+#zp-btn{background:#1a2840;border:1px solid #3a6080;color:#80b0d0;font:9px 'Courier New';padding:7px 16px;cursor:pointer;letter-spacing:.1em;border-radius:3px}
+#zp-btn.inq{border-color:#3a8060;color:#80c0a0;background:#0e2018}
+
+/* NPC prompt (shop/squad/job/guide) */
+#npc-prompt{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:6px;pointer-events:all;z-index:25;background:rgba(10,14,22,.92);padding:8px 16px;border-radius:5px;border:1px solid #2a3040}
+.npc-label{font-size:9px;color:#80ffc0;letter-spacing:.14em}
+.npc-sub{font-size:7px;color:#6a7488}
+.npc-btn{background:#1a2820;border:1px solid #4a8060;color:#80c0a0;font:9px 'Courier New';padding:6px 14px;cursor:pointer;border-radius:3px;letter-spacing:.08em}
+
+#emote-bar{position:absolute;bottom:54px;left:50%;transform:translateX(-50%);display:none;gap:5px;z-index:20;pointer-events:all;flex-wrap:wrap;justify-content:center;max-width:90vw;background:rgba(10,14,22,.92);padding:5px;border-radius:3px}
+.em-btn{background:rgba(20,26,36,.92);border:1px solid #2a3240;color:#9aa0b0;font:8px 'Courier New';padding:6px 9px;border-radius:2px;cursor:pointer;white-space:nowrap}
+.em-btn:hover{border-color:#4a5468;color:#c0c8d8}
+
+#quick-chat{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);display:none;z-index:35;pointer-events:all;align-items:center;gap:5px}
+#qc-input{background:rgba(14,20,30,.98);border:1px solid #2a3850;color:#d0d8e8;font:11px 'Courier New';padding:9px 12px;width:min(280px,72vw);outline:none;border-radius:3px}
+#qc-send{background:#162030;border:1px solid #2a4060;color:#80a8d0;font:9px 'Courier New';padding:9px 12px;cursor:pointer;border-radius:3px}
+
+/* Panels */
+.panel{position:absolute;background:rgba(14,20,30,.98);border:1px solid #2a3240;border-radius:5px;z-index:60;pointer-events:all;box-shadow:0 4px 24px #00000080}
+.panel-close{position:absolute;top:7px;right:9px;cursor:pointer;color:#5a6478;font-size:12px}
+.panel-close:hover{color:#c0c8d8}
+.panel-title{font-size:11px;color:#80b0d0;letter-spacing:.14em;margin-bottom:10px}
+
+#guide-panel{top:46px;left:8px;width:240px;display:none;padding:14px}
+.gp-line{font-size:8px;color:#9aa0b0;line-height:1.7}
+
+#profile-panel{top:46px;left:8px;width:240px;display:none;padding:14px}
+#chess-panel{top:46px;right:8px;display:none;padding:14px}
+.pp-head{display:flex;gap:10px;align-items:center;margin-bottom:10px}
+#pp-canvas{border:1px solid #2a3240;background:#0e1218;border-radius:3px}
+.pp-name{font-size:13px;color:#e0c870;letter-spacing:.08em}
+.pp-row{display:flex;justify-content:space-between;font-size:8px;color:#8a90a0;margin-bottom:4px}
+.pp-val{color:#c0c8d8}
+.pp-bio{font-size:8px;color:#9aa0b0;line-height:1.5;margin-top:8px;padding-top:8px;border-top:1px solid #1e2430;font-style:italic}
+.pp-bio-edit{width:100%;background:#0e1218;border:1px solid #2a3240;color:#c0c8d8;font:8px 'Courier New';padding:5px;border-radius:2px;outline:none;margin-top:6px;resize:none}
+.pp-dm-btn{margin-top:8px;width:100%;background:#162030;border:1px solid #2a4458;color:#80a8d0;font:8px 'Courier New';padding:6px;border-radius:2px;cursor:pointer}
+
+#dm-panel{top:46px;right:8px;width:240px;height:calc(100% - 56px);display:none;flex-direction:column}
+.dm-header{padding:9px 11px;border-bottom:1px solid #1a2030;display:flex;align-items:center;justify-content:space-between}
+.dm-tabs{display:flex;gap:3px;padding:6px 8px;border-bottom:1px solid #1a2030;flex-wrap:wrap;max-height:70px;overflow-y:auto}
+.dm-tab{font-size:8px;color:#8a90a0;background:#141822;border:1px solid #2a3240;padding:3px 7px;border-radius:2px;cursor:pointer}
+.dm-tab.active{border-color:#3a5a7a;color:#a0c0e0}
+.dmt-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:#e0a030;margin-left:3px}
+.dm-thread{flex:1;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:3px}
+.dm-msg{font-size:8px;line-height:1.5;padding:3px 6px;border-radius:3px;max-width:85%}
+.dm-msg.mine{align-self:flex-end;background:#1a2c40;color:#c0d8f0}
+.dm-msg.theirs{align-self:flex-start;background:#1a1e28;color:#c0c8d8}
+.dm-input-row{padding:7px 9px;border-top:1px solid #1a2030;display:flex;gap:5px}
+#dm-input{flex:1;background:#0e1218;border:1px solid #2a3240;color:#c0c8d8;font:8px 'Courier New';padding:7px 8px;outline:none;border-radius:2px}
+#dm-send{background:#162030;border:1px solid #2a4458;color:#80a8d0;font:7px 'Courier New';padding:7px 9px;cursor:pointer;border-radius:2px}
+.dm-empty{font-size:8px;color:#5a6478;text-align:center;padding:20px;font-style:italic}
+
+#chat-drawer{position:absolute;top:0;right:-300px;width:290px;height:100%;background:rgba(14,20,30,.98);border-left:1px solid #1a2030;z-index:55;display:flex;flex-direction:column;transition:right .2s ease;pointer-events:all}
+#chat-drawer.open{right:0}
+.cd-header{padding:9px 11px;border-bottom:1px solid #1a2030;display:flex;align-items:center;justify-content:space-between}
+.cd-title{font-size:8px;color:#8a94a8;letter-spacing:.14em}
+.cd-close{font-size:11px;color:#5a6478;cursor:pointer;padding:1px 5px}
+#chat-log{flex:1;overflow-y:auto;padding:7px 9px;display:flex;flex-direction:column;gap:2px}
+.chat-line{font-size:8px;line-height:1.6;color:#a0a8b8}
+.chat-line .cn{font-weight:bold}
+.chat-line.sys{color:#5a7a6a;font-style:italic}
+#chat-input-row{padding:7px 9px;border-top:1px solid #1a2030;display:flex;gap:5px}
+#chat-inp{flex:1;background:#0e1218;border:1px solid #2a3240;color:#c0c8d8;font:8px 'Courier New';padding:7px 8px;outline:none;border-radius:2px}
+#chat-send-btn{background:#141a26;border:1px solid #2a3240;color:#8a94a8;font:7px 'Courier New';padding:7px 9px;cursor:pointer;border-radius:2px}
+
+#mini-chat{position:absolute;bottom:54px;left:8px;display:flex;flex-direction:column;gap:2px;pointer-events:none;z-index:18;max-width:48vw}
+.mc{font-size:8px;color:#8a90a0;line-height:1.4;transition:opacity .5s}
+.mc b{color:#c0c8d8}
+#elog{position:absolute;bottom:54px;left:8px;display:flex;flex-direction:column;gap:2px;pointer-events:none;z-index:17;max-width:50vw}
+.el{font-size:7px;color:#5a6a60;line-height:1.4;transition:opacity .5s}
+#pk-feed{position:absolute;top:42px;right:8px;display:flex;flex-direction:column;gap:2px;pointer-events:none;z-index:18;max-width:40vw;align-items:flex-end}
+.pkf{font-size:8px;color:#d08080;background:rgba(30,12,12,.7);padding:2px 6px;border-radius:2px;transition:opacity .5s}
+.pkf.vault{color:#ffd060;background:rgba(40,32,8,.7)}
+
+/* Shop panel */
+#shop-panel{top:50px;left:50%;transform:translateX(-50%);width:min(560px,94vw);max-height:calc(100% - 70px);display:none;flex-direction:column;padding:16px}
+.shop-tabs{display:flex;gap:4px;margin-bottom:12px}
+.shop-tab{flex:1;text-align:center;padding:7px;font-size:8px;color:#8a90a0;background:#141822;border:1px solid #2a3240;border-radius:2px;cursor:pointer;letter-spacing:.12em}
+.shop-tab.active{color:#ffd040;border-color:#4a3818}
+.shop-items{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;overflow-y:auto;max-height:50vh}
+.shop-item{background:#0e131c;border:1px solid #2a3240;border-radius:4px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.shop-item .icon{width:60px;height:60px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff}
+.shop-item .name{font-size:9px;color:#c0c8d8;text-align:center}
+.shop-item .price{font-size:9px;color:#ffd040}
+.shop-item .price::before{content:'⌬ '}
+.shop-item button{background:#162030;border:1px solid #2a4458;color:#80a8d0;font:8px 'Courier New';padding:5px 10px;cursor:pointer;border-radius:2px;letter-spacing:.08em;width:100%}
+.shop-item button.owned{border-color:#4a8060;color:#80c0a0;background:#0e2018}
+.shop-item button.equipped{border-color:#d8b030;color:#ffe060;background:#2a2410}
+.shop-item button:disabled{opacity:.5;cursor:not-allowed}
+
+/* Squad panel */
+#squad-panel{top:50px;left:50%;transform:translateX(-50%);width:min(420px,94vw);max-height:calc(100% - 70px);display:none;flex-direction:column;padding:16px}
+.squad-section{background:#0e131c;border:1px solid #2a3240;border-radius:4px;padding:12px;margin-bottom:10px}
+.sq-row{display:flex;justify-content:space-between;font-size:9px;color:#8a90a0;margin-bottom:4px}
+.sq-val{color:#c0c8d8}
+.sq-list{max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:3px}
+.sq-item{padding:6px 9px;background:#141822;border:1px solid #2a3240;border-radius:2px;font-size:8px;display:flex;justify-content:space-between;align-items:center}
+.sq-item button{background:#162030;border:1px solid #2a4458;color:#80a8d0;font:7px 'Courier New';padding:3px 8px;cursor:pointer;border-radius:2px}
+.sq-form{display:flex;gap:6px;margin-top:6px}
+.sq-form input{flex:1;background:#0e1218;border:1px solid #2a3240;color:#c0c8d8;font:9px 'Courier New';padding:6px 8px;outline:none;border-radius:2px}
+.sq-form button{background:#1a2840;border:1px solid #3a6080;color:#80b0d0;font:8px 'Courier New';padding:6px 12px;cursor:pointer;border-radius:2px}
+.sq-member{padding:5px 8px;background:#141822;border:1px solid #2a3240;border-radius:2px;font-size:8px;display:flex;justify-content:space-between}
+.sq-member .online{color:#80c080}.sq-member .offline{color:#5a6478}
+
+/* Job panel */
+#job-panel{bottom:60px;left:50%;transform:translateX(-50%);width:min(380px,92vw);display:none;flex-direction:column;padding:14px}
+.job-status{display:flex;justify-content:space-between;font-size:9px;color:#80ffc0;margin-bottom:10px}
+.job-order{font-size:10px;color:#c0c8d8;text-align:center;margin-bottom:10px;padding:8px;background:#0e131c;border-radius:3px}
+.job-bottles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.job-bottle{padding:14px 0;border-radius:3px;cursor:pointer;text-align:center;font-size:9px;color:#fff;letter-spacing:.06em;border:1px solid rgba(255,255,255,.15)}
+.job-bottle:active{transform:scale(.94)}
+.job-bottle.amber{background:#a8741a}
+.job-bottle.blue{background:#1a548a}
+.job-bottle.green{background:#1a7a3a}
+.job-bottle.red{background:#a8281a}
+.job-end-btn{margin-top:10px;width:100%;background:#1a2030;border:1px solid #3a4458;color:#9aa0b0;font:8px 'Courier New';padding:7px;cursor:pointer;border-radius:2px}
+
+/* ── MOBILE UI v2 — minimalist 4-corner squares + small dpads ── */
+#m-ui{position:absolute;inset:0;pointer-events:none;z-index:30;display:none}
+#m-ui.show{display:block}
+.m-sq{position:absolute;width:38px;height:38px;background:rgba(10,14,22,.72);border:1px solid rgba(120,150,180,.32);border-radius:5px;display:flex;align-items:center;justify-content:center;color:#c0d0e0;font:11px 'Courier New';pointer-events:all;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+.m-sq:active,.m-sq.active{background:rgba(80,120,160,.55);color:#fff;border-color:rgba(180,210,240,.6)}
+.m-sq.pulse{animation:mPulse 1.2s ease-in-out infinite}
+@keyframes mPulse{50%{border-color:#e03a30;box-shadow:0 0 6px rgba(224,58,48,.5)}}
+.m-sq .m-sub{position:absolute;bottom:1px;right:2px;font-size:6px;color:#80a0c0;line-height:1}
+#m-chat   {top:6px;  left:6px}
+#m-menu   {top:50px; left:6px}
+#m-weapon {top:6px;  right:6px}
+#m-grab   {top:50px; right:6px}
+#m-dash   {bottom:18px; left:50%; transform:translateX(-50%); width:44px; height:32px}
+#m-jet    {bottom:54px; left:50%; transform:translateX(-50%); width:44px; height:32px}
+
+.m-dpad{position:absolute;width:96px;height:96px;border:1.5px solid rgba(120,150,180,.32);border-radius:8px;background:transparent;pointer-events:all;touch-action:none;z-index:30}
+.m-dpad.fire{border-color:rgba(255,150,110,.42)}
+.m-thumb{position:absolute;width:30px;height:30px;background:rgba(160,200,240,.45);border:1px solid rgba(220,235,255,.55);border-radius:5px;top:33px;left:33px;pointer-events:none;transition:none}
+.m-dpad.fire .m-thumb{background:rgba(255,170,130,.5)}
+#m-move{bottom:14px;left:14px}
+#m-fire{bottom:14px;right:14px}
+
+/* Weapon slider picker — appears below #m-weapon when sliding */
+#m-wp{position:absolute;top:50px;right:6px;display:none;flex-wrap:wrap;gap:3px;pointer-events:all;z-index:35;width:120px;justify-content:flex-end}
+#m-wp.show{display:flex}
+.m-wp-item{width:36px;height:28px;background:rgba(10,14,22,.94);border:1px solid rgba(120,150,180,.4);border-radius:4px;display:flex;align-items:center;justify-content:center;color:#c0d0e0;font:7px 'Courier New';text-align:center;line-height:1;letter-spacing:.04em}
+.m-wp-item.equipped{background:rgba(224,58,48,.32);border-color:#e03a30;color:#fff}
+.m-wp-item.over{background:rgba(80,140,200,.7);color:#fff;border-color:#a0c0e0;transform:scale(1.08)}
+
+/* Chat dock — minimal top-left chat that drops down on tap */
+#m-chat-dock{position:absolute;top:6px;left:50px;display:none;flex-direction:column;background:rgba(10,14,22,.94);border:1px solid #3a4458;border-radius:4px;padding:4px;gap:3px;z-index:34;pointer-events:all;width:200px;max-height:220px}
+#m-chat-dock.show{display:flex}
+#m-chat-list{flex:1;overflow-y:auto;font:8px 'Courier New';color:#a0b4c8;max-height:160px;line-height:1.3}
+#m-chat-list .ml{padding:2px 0;border-bottom:1px dashed #1a2030}
+#m-chat-list .ml.pm{color:#ffaa60}
+#m-chat-input{display:flex;gap:3px}
+#m-chat-input input{flex:1;background:#0a0e16;border:1px solid #2a3240;color:#c0d0e0;font:8px 'Courier New';padding:4px 6px;border-radius:2px;outline:none}
+#m-chat-input button{background:#3a4458;color:#fff;border:none;font:8px 'Courier New';padding:4px 8px;border-radius:2px;cursor:pointer}
+
+/* Menu panel — top-left, contains all secondary actions */
+#m-menu-pop{position:absolute;top:50px;left:50px;display:none;flex-direction:column;background:rgba(10,14,22,.96);border:1px solid #3a4458;border-radius:4px;padding:5px;gap:2px;z-index:34;pointer-events:all;min-width:140px}
+#m-menu-pop.show{display:flex}
+#m-menu-pop .mm{padding:6px 9px;font:9px 'Courier New';color:#a0b4c8;cursor:pointer;border-radius:2px;letter-spacing:.1em}
+#m-menu-pop .mm:active{background:rgba(60,90,120,.4);color:#fff}
+#m-menu-pop .mm.warn{color:#ffa060}
+#m-menu-pop .mm-sec{font-size:7px;color:#5a6478;padding:4px 9px 1px;letter-spacing:.16em;border-top:1px solid #1a2030;margin-top:2px}
+
+@media (pointer:coarse), (max-width:600px) {
+  #topbar .tb-ico{display:none}
+  #topbar .tb-essential{display:flex !important}
+  #topbar{padding:3px 50px 3px 50px;font-size:8px}
+  .tb-coins{font-size:8px;padding:1px 5px}
+  #kb-hint{display:none}
+  #m-ui.show{display:block}
+  /* Hide any old mobile cruft */
+  #mobile-controls,#mobile-actions,#mobile-menu-btn,#mobile-menu-panel,#mobile-comms{display:none !important}
+}
+
+/* Jetpack fuel bar */
+#jetpack-fuel{position:absolute;bottom:118px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;font:8px 'Courier New';color:#a0b4c8;z-index:18;pointer-events:none;background:rgba(10,14,22,.6);padding:4px 10px;border-radius:3px;border:1px solid #2a3240}
+.jp-label{letter-spacing:.14em;color:#e03a30}
+.jp-bar{width:120px;height:5px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:1px;overflow:hidden}
+.jp-fill{height:100%;background:#e03a30;width:100%;transition:width .15s}
+.jp-fill.low{background:#ffaa40}
+.jp-fill.empty{background:#404040}
+
+#kb-hint{position:absolute;bottom:3px;left:50%;transform:translateX(-50%);font-size:6px;color:#3a4050;pointer-events:none;z-index:16;white-space:nowrap}
+#reload-flash{position:absolute;inset:0;pointer-events:none;z-index:22;opacity:0;background:rgba(220,180,40,.05)}
+
+#vault-hud{position:absolute;top:42px;left:50%;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:2px;pointer-events:none;z-index:20;background:rgba(10,14,22,.7);padding:5px 12px;border-radius:4px;border:1px solid #2a3240}
+.vault-title{font-size:8px;color:#ffd040;letter-spacing:.14em}
+.vault-bar{width:160px;height:5px;background:#161820;border:1px solid #2a3240;border-radius:1px;overflow:hidden}
+.vault-bar .f{height:100%;background:#ffd040;transition:width .12s}
+.vault-owner{font-size:7px;color:#80c0ff;letter-spacing:.08em}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="screen-login" class="screen active">
+  <div class="logo">VAULTZONE</div>
+  <div class="logo-sub">SIGN IN OR PLAY AS GUEST</div>
+
+  <div class="login-card">
+    <div class="tabs">
+      <div class="tab active" data-tab="login" onclick="loginTab('login')">LOGIN</div>
+      <div class="tab" data-tab="signup" onclick="loginTab('signup')">SIGN UP</div>
+      <div class="tab" data-tab="guest" onclick="loginTab('guest')">GUEST</div>
+    </div>
+
+    <div class="tab-content active" id="tab-login">
+      <div class="field-label">EMAIL</div>
+      <input class="ni" id="login-email" type="email" placeholder="you@example.com" autocomplete="email">
+      <button class="btn-primary" onclick="doLogin()">LOG IN</button>
+      <div class="note">No password. Email used as your account ID only — not verified, not shared, not advertised.</div>
+      <div class="err-msg" id="login-err"></div>
+    </div>
+
+    <div class="tab-content" id="tab-signup">
+      <div class="field-label">EMAIL</div>
+      <input class="ni" id="signup-email" type="email" placeholder="you@example.com">
+      <div class="field-label">CALLSIGN</div>
+      <input class="ni" id="signup-name" type="text" maxlength="16" placeholder="Name…">
+      <div class="cc-grid">
+        <div class="cc-section"><div class="field-label">BODY</div><div class="swatches" id="su-sw-body"></div></div>
+        <div class="cc-section"><div class="field-label">ACCENT</div><div class="swatches" id="su-sw-accent"></div></div>
+        <div class="cc-section"><div class="field-label">SKIN</div><div class="swatches" id="su-sw-head"></div></div>
+        <div class="cc-section"><div class="field-label">HAIR</div><div class="swatches" id="su-sw-hair"></div></div>
+        <div class="cc-preview"><canvas id="preview-canvas" width="90" height="110"></canvas></div>
+      </div>
+      <button class="btn-primary" onclick="doSignup()">CREATE ACCOUNT</button>
+      <div class="err-msg" id="signup-err"></div>
+    </div>
+
+    <div class="tab-content" id="tab-guest">
+      <div class="field-label">GUEST CALLSIGN</div>
+      <input class="ni" id="guest-name" type="text" maxlength="16" placeholder="Name…">
+      <div class="note">Guests can play but stats and coins reset every session. Sign up to keep progress.</div>
+      <button class="btn-guest" onclick="doGuest()">PLAY AS GUEST</button>
+    </div>
+  </div>
+
+  <div style="font-size:7px;color:#3a4050;letter-spacing:.14em;margin-top:8px">VAULTZONE v6.19</div>
+</div>
+
+<!-- GAME -->
+<div id="game-screen">
+  <div id="topbar">
+    <div class="tb-name tb-essential" id="tb-myname">—</div>
+    <div class="tb-coins tb-essential" id="tb-coins">500</div>
+    <div class="tb-squad" id="tb-squad" style="display:none">—</div>
+    <div class="tb-badge" onclick="toggleGuide()">?</div>
+    <div class="tb-sep"></div>
+    <div id="tb-zone" class="tb-essential">LOBBY</div>
+    <div id="tb-players">1 online</div>
+    <div class="tb-ico" onclick="toggleShop()">SHOP</div>
+    <div class="tb-ico" onclick="toggleSquad()">SQUAD</div>
+    <div class="tb-ico" id="dm-ico" onclick="toggleDM()">DM</div>
+    <div class="tb-ico" id="chat-icon" onclick="toggleChat()">CHAT</div>
+    <div class="tb-ico" onclick="doUnstick()" style="color:#ffa060;border-color:#603a20">UNSTICK</div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="gc"></canvas>
+
+    <div id="match-hud">
+      <div id="match-title">—</div>
+      <div id="match-row">
+        <div class="mh-side"><div class="mh-name" id="mh-na">—</div><div class="mh-hp"><div class="f" id="mh-fa" style="width:100%;background:#4a90e0"></div></div></div>
+        <div style="font-size:10px;color:#3a4050">vs</div>
+        <div class="mh-side"><div class="mh-name" id="mh-nb">—</div><div class="mh-hp"><div class="f" id="mh-fb" style="width:100%;background:#e05050"></div></div></div>
+      </div>
+      <div id="mh-timer"></div>
+    </div>
+
+    <div id="vault-hud">
+      <div class="vault-title">⌬ VAULT</div>
+      <div class="vault-bar"><div class="f" id="vault-fill" style="width:100%"></div></div>
+      <div class="vault-owner" id="vault-owner">neutral</div>
+    </div>
+
+    <div id="fighter-hud">
+      <div class="fh-row">
+        <div class="fh-label">HP</div>
+        <div class="fh-bar" id="fh-hpbar"><div id="fh-hpfill"></div></div>
+        <span style="font-size:8px;color:#9a4040;min-width:18px" id="fh-hpnum">120</span>
+        <div class="fh-weapon" id="fh-weapon">Sidearm</div>
+        <div class="fh-ammo" id="fh-ammo">14/14</div>
+        <div class="fh-streak" id="fh-streak">✦ 0</div>
+      </div>
+    </div>
+
+    <div id="weapon-selector"></div>
+    <div id="jetpack-fuel">
+      <div class="jp-label">⚡ JET</div>
+      <div class="jp-bar"><div class="jp-fill" id="jp-fill"></div></div>
+    </div>
+
+    <div id="game-overlay">
+      <div id="result-box">
+        <div class="rb-win" id="rb-winner"></div>
+        <div class="rb-reward" id="rb-reward"></div>
+        <div class="rb-msg">returning to lobby…</div>
+      </div>
+      <div id="wait-banner">Waiting for opponent…</div>
+    </div>
+
+    <div id="zone-prompt">
+      <div id="zp-label">SPAR ROOM</div>
+      <div id="zp-sub">queue to fight</div>
+      <div style="display:flex;gap:6px">
+        <button id="zp-btn" onclick="toggleQueue()">QUEUE UP</button>
+        <button id="zp-bot-btn" onclick="vsBot()" style="background:#2a1a30;border:1px solid #6a4080;color:#c080d0;font:9px 'Courier New';padding:7px 16px;cursor:pointer;letter-spacing:.1em;border-radius:3px">VS BOT</button>
+      </div>
+    </div>
+
+    <div id="npc-prompt">
+      <div class="npc-label" id="npc-label">—</div>
+      <div class="npc-sub" id="npc-sub">press F to talk</div>
+      <button class="npc-btn" id="npc-btn">OPEN</button>
+    </div>
+
+    <div id="emote-bar"></div>
+    <div id="quick-chat">
+      <input id="qc-input" type="text" maxlength="60" placeholder="say something… (Enter)" autocomplete="off">
+      <div id="qc-send" onclick="sendQuickChat()">→</div>
+    </div>
+
+    <!-- Mobile UI v2 — minimalist -->
+    <div id="m-ui">
+      <!-- top-left -->
+      <div class="m-sq" id="m-chat">💬<div class="m-sub" id="m-chat-badge" style="display:none">●</div></div>
+      <div class="m-sq" id="m-menu">☰</div>
+      <!-- top-right -->
+      <div class="m-sq" id="m-weapon">🔫</div>
+      <div class="m-sq" id="m-grab">✊</div>
+      <!-- bottom center actions -->
+      <div class="m-sq" id="m-dash">⚡</div>
+      <div class="m-sq" id="m-jet">🚀</div>
+      <!-- bottom dpads -->
+      <div class="m-dpad" id="m-move"><div class="m-thumb" id="m-move-thumb"></div></div>
+      <div class="m-dpad fire" id="m-fire"><div class="m-thumb" id="m-fire-thumb"></div></div>
+      <!-- weapon slider (revealed on m-weapon slide) -->
+      <div id="m-wp"></div>
+      <!-- chat dock (revealed on m-chat tap) -->
+      <div id="m-chat-dock">
+        <div id="m-chat-list"></div>
+        <div id="m-chat-input">
+          <input id="m-chat-inp" type="text" maxlength="60" placeholder="message…" autocomplete="off">
+          <button id="m-chat-send">→</button>
+        </div>
+      </div>
+      <!-- menu pop (revealed on m-menu tap) -->
+      <div id="m-menu-pop">
+        <div class="mm" id="mm-shop">SHOP</div>
+        <div class="mm" id="mm-squad">SQUAD</div>
+        <div class="mm" id="mm-dm">DM</div>
+        <div class="mm" id="mm-trade">TRADE</div>
+        <div class="mm-sec">SETTINGS</div>
+        <div class="mm" id="mm-sens-down">⬇ SENSITIVITY −</div>
+        <div class="mm" id="mm-sens-up">⬆ SENSITIVITY +</div>
+        <div class="mm" id="mm-profile">PROFILE</div>
+        <div class="mm" id="mm-guide">GUIDE</div>
+        <div class="mm warn" id="mm-unstick">UNSTICK ME</div>
+      </div>
+    </div>
+
+    <div id="chess-panel" class="panel" style="display:none;width:auto">
+      <div class="panel-close" onclick="toggleChess()">✕</div>
+      <div class="panel-title">♛ CHESS · <span id="chess-turn" style="color:#e03a30">white</span> to move</div>
+      <canvas id="chess-canvas" width="320" height="320" style="background:#0a0a0a;border:1px solid #3a4458;display:block"></canvas>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button onclick="chessReset()" style="background:#1a1a1a;border:1px solid #3a4458;color:#a0b4c8;font:8px 'Courier New';padding:5px 10px;cursor:pointer;letter-spacing:.12em">RESET</button>
+        <div style="font:8px 'Courier New';color:#5a6478;align-self:center">click a piece, then a square</div>
+      </div>
+    </div>
+
+    <div id="settings-panel" class="panel" style="display:none">
+      <div class="panel-close" onclick="toggleSettingsPanel()">✕</div>
+      <div class="panel-title">⚙ SETTINGS</div>
+      <div style="display:flex;flex-direction:column;gap:14px;padding:6px 4px">
+        <div>
+          <div style="font:9px 'Courier New';color:#a0b4c8;margin-bottom:6px;letter-spacing:.1em">MOUSE SENSITIVITY <span id="sens-val" style="color:#e03a30">1.00</span></div>
+          <input id="sens-slider" type="range" min="0.4" max="2.5" step="0.05" value="1.0" style="width:100%">
+          <div style="font:7px 'Courier New';color:#5a6478;margin-top:4px">Adjusts cursor responsiveness when spar zooms in.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font:9px 'Courier New';color:#a0b4c8;margin-bottom:2px;letter-spacing:.1em">SHORTCUTS</div>
+          <div class="mm" onclick="openProfile(myId);toggleSettingsPanel()">PROFILE</div>
+          <div class="mm" onclick="toggleGuide();toggleSettingsPanel()">GUIDE</div>
+          <div class="mm" style="color:#ffa060" onclick="doUnstick();toggleSettingsPanel()">UNSTICK ME</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panels -->
+    <div id="guide-panel" class="panel"><div class="panel-close" onclick="toggleGuide()">✕</div>
+      <div class="panel-title">◆ HOW TO PLAY</div><div id="guide-lines"></div></div>
+
+    <div id="profile-panel" class="panel"><div class="panel-close" onclick="closeProfile()">✕</div>
+      <div class="pp-head"><canvas id="pp-canvas" width="48" height="58"></canvas>
+        <div><div class="pp-name" id="pp-name">—</div><div style="font-size:7px;color:#7a8090" id="pp-status">online</div></div></div>
+      <div class="pp-row"><span>Spar Wins</span><span class="pp-val" id="pp-wins">0</span></div>
+      <div class="pp-row"><span>Spar Losses</span><span class="pp-val" id="pp-losses">0</span></div>
+      <div class="pp-row"><span>PK Kills</span><span class="pp-val" id="pp-pkkills">0</span></div>
+      <div class="pp-row"><span>Streak</span><span class="pp-val" id="pp-streak">0</span></div>
+      <div class="pp-row"><span>Coins</span><span class="pp-val" id="pp-coins" style="color:#ffd040">0</span></div>
+      <div class="pp-row"><span>Squad</span><span class="pp-val" id="pp-squad">—</span></div>
+      <div class="pp-row"><span>Online</span><span class="pp-val" id="pp-online">0m</span></div>
+      <div class="pp-bio" id="pp-bio"></div>
+      <textarea class="pp-bio-edit" id="pp-bio-edit" rows="2" placeholder="Edit your bio…" maxlength="120" style="display:none"></textarea>
+      <div id="pp-customize" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #2a3240">
+        <div style="font:9px 'Courier New';color:#a0b4c8;letter-spacing:.12em;margin-bottom:6px">◆ CUSTOMIZE</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div class="pp-row"><span style="color:#80a0c0">Body</span><div id="pp-body-swatches" style="display:flex;gap:3px;flex-wrap:wrap"></div></div>
+          <div class="pp-row"><span style="color:#80a0c0">Accent</span><div id="pp-accent-swatches" style="display:flex;gap:3px;flex-wrap:wrap"></div></div>
+          <div class="pp-row"><span style="color:#80a0c0">Skin</span><div id="pp-head-swatches" style="display:flex;gap:3px;flex-wrap:wrap"></div></div>
+          <div class="pp-row"><span style="color:#80a0c0">Hair</span><div id="pp-hair-swatches" style="display:flex;gap:3px;flex-wrap:wrap"></div></div>
+        </div>
+      </div>
+      <button class="pp-dm-btn" id="pp-dm-btn" style="display:none">Message</button>
+    </div>
+
+    <div id="dm-panel" class="panel">
+      <div class="dm-header"><div style="font-size:9px;color:#80a8d0;letter-spacing:.12em">Messages</div><div class="panel-close" style="position:static" onclick="toggleDM()">✕</div></div>
+      <div class="dm-tabs" id="dm-tabs"></div>
+      <div class="dm-thread" id="dm-thread"><div class="dm-empty">Click a player to start a conversation.</div></div>
+      <div class="dm-input-row"><input id="dm-input" type="text" maxlength="200" placeholder="Message…"><div id="dm-send" onclick="sendDM()">→</div></div>
+    </div>
+
+    <div id="shop-panel" class="panel">
+      <div class="panel-close" onclick="toggleShop()">✕</div>
+      <div class="panel-title">⌬ SHOP — <span id="shop-coins" style="color:#ffd040">0</span> coins</div>
+      <div class="shop-tabs" style="margin-bottom:6px">
+        <div class="shop-season active" data-season="classic" onclick="setShopSeason('classic')" style="background:#1c2030;border:1px solid #3a4458;color:#a0b0c0;font:8px 'Courier New';padding:5px 12px;cursor:pointer;letter-spacing:.12em;border-radius:3px">CLASSIC</div>
+        <div class="shop-season" data-season="2026" onclick="setShopSeason('2026')" style="background:#1c1024;border:1px solid #5a2880;color:#c080ff;font:8px 'Courier New';padding:5px 12px;cursor:pointer;letter-spacing:.12em;border-radius:3px">★ 2026 LAUNCH</div>
+      </div>
+      <div class="shop-tabs">
+        <div class="shop-tab active" data-cat="gunSkin" onclick="setShopTab('gunSkin')">GUNS</div>
+        <div class="shop-tab" data-cat="head" onclick="setShopTab('head')">HEADS</div>
+        <div class="shop-tab" data-cat="body" onclick="setShopTab('body')">BODIES</div>
+        <div class="shop-tab" data-cat="cloak" onclick="setShopTab('cloak')">CLOAKS</div>
+      </div>
+      <div class="shop-items" id="shop-items"></div>
+    </div>
+
+    <div id="trade-panel" class="panel" style="top:50px;left:50%;transform:translateX(-50%);width:min(380px,94vw);display:none;flex-direction:column;padding:16px;background:rgba(14,18,28,.96);border:1px solid #5a2848;border-radius:6px;position:absolute;z-index:50">
+      <div class="panel-close" onclick="closeTrade()" style="position:absolute;top:8px;right:8px;cursor:pointer;color:#aaa">✕</div>
+      <div class="panel-title" style="font:11px 'Courier New';color:#ff90c0;letter-spacing:.16em;margin-bottom:12px">★ TRADE TABLE ★</div>
+      <div style="font:8px 'Courier New';color:#90a0b8;margin-bottom:8px">stand near a trade table with another player to send them coins</div>
+      <label style="font:8px 'Courier New';color:#a0b0c0;display:block;margin:8px 0 4px">Recipient:</label>
+      <select id="trade-target" style="width:100%;background:#0e1218;color:#c0d0e0;border:1px solid #2a3548;font:9px 'Courier New';padding:5px"></select>
+      <label style="font:8px 'Courier New';color:#a0b0c0;display:block;margin:10px 0 4px">Amount (⌬ coins):</label>
+      <input type="number" id="trade-amount" min="1" max="100000" value="100" style="width:100%;background:#0e1218;color:#ffd040;border:1px solid #2a3548;font:11px 'Courier New';padding:5px"/>
+      <button onclick="doTrade()" style="margin-top:14px;background:#2a1024;border:1px solid #ff90c0;color:#ff90c0;font:9px 'Courier New';padding:8px;cursor:pointer;letter-spacing:.12em">SEND COINS →</button>
+      <div id="trade-result" style="margin-top:8px;font:8px 'Courier New';color:#90c0a0;min-height:14px"></div>
+    </div>
+
+    <div id="squad-panel" class="panel">
+      <div class="panel-close" onclick="toggleSquad()">✕</div>
+      <div class="panel-title">⌬ SQUADS</div>
+      <div id="squad-mine"></div>
+      <div id="squad-list-wrap"></div>
+    </div>
+
+    <div id="job-panel" class="panel">
+      <div class="panel-close" onclick="closeJob()">✕</div>
+      <div class="panel-title">🍸 BARTENDER</div>
+      <div class="job-status"><span>TIME: <span id="job-time">60</span>s</span><span>EARNED: ⌬ <span id="job-earned">0</span></span></div>
+      <div class="job-order" id="job-order">—</div>
+      <div class="job-bottles">
+        <div class="job-bottle amber" onclick="jobPour('amber')">AMBER</div>
+        <div class="job-bottle blue" onclick="jobPour('blue')">BLUE</div>
+        <div class="job-bottle green" onclick="jobPour('green')">GREEN</div>
+        <div class="job-bottle red" onclick="jobPour('red')">RED</div>
+      </div>
+      <button class="job-end-btn" onclick="endJob()">END SHIFT</button>
+    </div>
+
+    <div id="chat-drawer"><div class="cd-header"><div class="cd-title">Open Chat</div><div class="cd-close" onclick="toggleChat()">✕</div></div>
+      <div id="chat-log"></div>
+      <div id="chat-input-row"><input id="chat-inp" type="text" maxlength="60" placeholder="Say something…"><button id="chat-send-btn" onclick="sendChat()">SEND</button></div></div>
+
+    <div id="mini-chat"></div>
+    <div id="reload-flash"></div>
+    <div id="elog"></div>
+    <div id="pk-feed"></div>
+    <div id="kb-hint">WASD Move · Click Shoot · 1-8 Weapon · Space Dash · R Reload · F Interact · E Vehicle · Q Chat · Y Emote · J Jetpack</div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/shared/constants.js"></script>
+<script src="/game.js"></script>
+</body>
+</html>
